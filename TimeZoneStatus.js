@@ -5,6 +5,12 @@ import { View, Text, StyleSheet, ImageBackground } from 'react-native';
 const safeString = (value) => (value !== undefined && value !== null ? String(value) : 'N/A');
 
 // Function to get the current time in a specific time zone
+const getTime = (timeZone) =>
+  new Date().toLocaleString('en-US', {
+    timeZone,
+    timeStyle: 'medium',
+    hourCycle: 'h12',
+  });
 
 
 // Function to get weather data for a city with error handling
@@ -27,13 +33,65 @@ const getWeather = async (city) => {
   }
 };
 
+const locations = [
+  { city: 'India', weatherCity: 'Kolkata', timeKey: 'India' },
+  { city: 'Paris', weatherCity: 'Paris', timeKey: 'Paris' },
+  { city: 'New York', weatherCity: 'New York', timeKey: 'NewYork' },
+  { city: 'London', weatherCity: 'London', timeKey: 'London' },
+  { city: 'Tokyo', weatherCity: 'Tokyo', timeKey: 'Tokyo' },
+  { city: 'Sydney', weatherCity: 'Sydney', timeKey: 'Sydney' },
+];
 
+const TimeBox = ({ city, time, weather }) => (
+  <View style={styles.timebox}>
+    <Text style={styles.header}>{safeString(city)}</Text>
+    <Text style={styles.time}>{safeString(time)}</Text>
+    <Text style={styles.weather}>{`Temp: ${safeString(weather)}°C`}</Text>
+  </View>
+);
 
 const TimeZoneStatus = () => {
   const [times, setTimes] = useState({});
   const [weatherData, setWeatherData] = useState({});
 
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      const cities = locations.map(({ weatherCity }) => weatherCity);
+      const weatherUpdates = await Promise.all(
+        cities.map(async (city) => {
+          const temp = await getWeather(city);
+          return { city, temp };
+        })
+      );
 
+      setWeatherData(
+        weatherUpdates.reduce((acc, { city, temp }) => {
+          acc[city] = temp;
+          return acc;
+        }, {})
+      );
+    };
+
+    fetchWeatherData();
+  }, []);
+
+  useEffect(() => {
+    const updateTimes = () => {
+      setTimes({
+        India: getTime('Asia/Kolkata'),
+        Paris: getTime('Europe/Paris'),
+        NewYork: getTime('America/New_York'),
+        London: getTime('Europe/London'),
+        Tokyo: getTime('Asia/Tokyo'),
+        Sydney: getTime('Australia/Sydney'),
+      });
+    };
+
+    updateTimes();
+    const interval = setInterval(updateTimes, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <ImageBackground
@@ -46,7 +104,14 @@ const TimeZoneStatus = () => {
       <View style={styles.overlay} />
       <Text style={styles.heading}>Planet Pulse: Time & Weather</Text>
       <View style={styles.container}>
-      
+        {locations.map(({ city, weatherCity, timeKey }) => (
+          <TimeBox
+            key={timeKey}
+            city={city}
+            time={times[timeKey]}
+            weather={weatherData[weatherCity]}
+          />
+        ))}
       </View>
     </ImageBackground>
   );
